@@ -16,6 +16,38 @@ spec:
         - name: simple-go-server
           image: acleverguy/simplehttpserver:k8s
           imagePullPolicy: IfNotPresent
+          env:
+            - name: VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: user.version
           ports:
             - containerPort: 8090
+          resources:
+            limits:
+              cpu: 800m
+              memory: 800Mi
+            requests:
+              cpu: 800m
+              memory: 800Mi
 
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+              httpHeaders:
+              - name: VERSION
+                value: 0.0.1
+              
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+              scheme: HTTP
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 10
+
+      
