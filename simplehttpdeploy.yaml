@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-go-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simple-go-server
+  template:
+    metadata:
+      labels:
+        app: simple-go-server
+    spec:
+      containers:
+        - name: simple-go-server
+          image: acleverguy/simplehttpserver:k8s
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+
