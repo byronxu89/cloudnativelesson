@@ -16,6 +16,8 @@ spec:
         - name: simple-go-server
           image: acleverguy/simplehttpserver:k8s
           imagePullPolicy: IfNotPresent
+          #add message check for stopping
+          terminationMessagePath: "/tmp/termination-log"
           env:
             - name: VERSION
               valueFrom:
