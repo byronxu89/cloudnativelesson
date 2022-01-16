@@ -1,10 +1,12 @@
 package main
 
 import (
+	"assignment4/metrics"
 	"context"
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -13,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -28,6 +32,11 @@ type HttpSrv struct {
 	mtx       *sync.Mutex
 }
 
+func randInt(min int, max int) int {
+	rand.Seed(time.Now().UTC().UnixNano())
+	return min + rand.Intn(max-min)
+}
+
 func NewHttpSrv(port int) *HttpSrv {
 	return &HttpSrv{
 		Port:      port,
@@ -36,6 +45,18 @@ func NewHttpSrv(port int) *HttpSrv {
 		mtx:       &sync.Mutex{},
 	}
 }
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	timer := metrics.NewTimer()
+	defer timer.ObserveTotal()
+	delay := randInt(10, 2000)
+	time.Sleep(time.Millisecond * time.Duration(delay))
+	//w.Header().Set("Content-Type", "text/plain")
+	//w.WriteHeader(http.StatusNotFound)
+	//w.Write([]byte("Not found\n"))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("hi there!"))
+}
+
 func (srv *HttpSrv) Start() (err error) {
 	srv.mtx.Lock()
 	defer srv.mtx.Unlock()
@@ -46,16 +67,15 @@ func (srv *HttpSrv) Start() (err error) {
 
 	srv.isStarted = true
 
+	metrics.Register()
 	// prepare router
+
 	handler := http.NewServeMux()
 	handler.HandleFunc("/healthz", healthz)
 	handler.HandleFunc("/healthz/", healthz)
+	handler.Handle("/metrics", promhttp.Handler())
 
-	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found\n"))
-	})
+	handler.HandleFunc("/", rootHandler)
 
 	// prepare address
 	addr := fmt.Sprintf(":%v", srv.Port)
@@ -92,7 +112,7 @@ func (m *HttpSrv) Shutdown(ctx context.Context) (err error) {
 		return errors.New("Server is not started")
 	}
 
-	stop := make(chan bool)
+	stop := make(chan struct{}, 1)
 	go func() {
 		// dummy preprocess before interrupted
 		//time.Sleep(4 * time.Second)
@@ -110,7 +130,7 @@ func (m *HttpSrv) Shutdown(ctx context.Context) (err error) {
 		// We can use .Shutdown to gracefully shuts down the server without
 		// interrupting any active connection
 		err = m.server.Shutdown(ctx)
-		stop <- true
+		stop <- struct{}{}
 	}()
 
 	select {

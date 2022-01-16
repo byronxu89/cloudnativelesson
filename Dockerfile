@@ -1,7 +1,7 @@
 FROM golang:alpine as builder
 WORKDIR /app
 ADD . .
-RUN CGO_ENABLED=0 GOOS=linux && go build -o httpserver .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 && go mod tidy && go build -o httpserver .
 
 FROM alpine:latest as prod
 RUN apk --no-cache add ca-certificates

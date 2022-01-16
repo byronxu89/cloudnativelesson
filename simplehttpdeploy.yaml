@@ -9,12 +9,15 @@ spec:
       app: simple-go-server
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8090"
       labels:
         app: simple-go-server
     spec:
       containers:
         - name: simple-go-server
-          image: acleverguy/simplehttpserver:k8s
+          image: acleverguy/simplehttpserver:metrics
           imagePullPolicy: IfNotPresent
           #add message check for stopping
           terminationMessagePath: "/tmp/termination-log"
